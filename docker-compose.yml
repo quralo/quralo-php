@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  quralo-php:
+    image: webdevops/php-apache:5.6
+    volumes:
+      - ./:/app
+    working_dir: /app
+    command: php examples/basic_usage.php
