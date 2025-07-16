@@ -282,6 +282,48 @@ Consulta el directorio `examples/` para implementaciones completas:
 - [`basic_usage.php`](examples/basic_usage.php) - Integración básica hospitalaria
 - [`client_integration.php`](examples/client_integration.php) - Sistema hospitalario completo con procesamiento en lotes
 
+## Desarrollo con Docker
+
+Puedes utilizar el archivo `docker-compose.yml` incluido en el repositorio para levantar un entorno de desarrollo rápido y reproducible, sin necesidad de instalar PHP ni extensiones en tu máquina local.
+
+### Ejecutar comandos en el contenedor
+
+Para ejecutar cualquier comando dentro del entorno PHP del contenedor (por ejemplo, correr tests, ejemplos o Composer), utiliza:
+
+```bash
+docker compose run --rm quralo-php <comando>
+```
+
+Por ejemplo, para ejecutar los tests:
+
+```bash
+docker compose run --rm quralo-php composer test
+```
+
+Para probar un ejemplo:
+
+```bash
+docker compose run --rm quralo-php php examples/basic_usage.php
+```
+
+Esto ejecutará el comando en un contenedor efímero, que se elimina automáticamente al finalizar.
+
+### Levantar un entorno interactivo (opcional)
+
+Si necesitas una terminal interactiva dentro del contenedor:
+
+```bash
+docker compose run --rm -it quralo-php bash
+```
+
+### Detener y limpiar recursos
+
+No es necesario detener manualmente los contenedores, ya que cada comando usa `--rm` y elimina el contenedor al finalizar. Si llegas a levantar servicios en modo background, puedes limpiar todo con:
+
+```bash
+docker compose down
+```
+
 ## Desarrollo y Testing
 
 ### Ejecutar Tests
@@ -329,7 +371,7 @@ Las contribuciones de la comunidad médica y de desarrolladores de sistemas hosp
 
 Este proyecto está licenciado bajo la Licencia MIT - consulta el archivo [LICENSE](LICENSE) para más detalles.
 
-## Roadmap
+<!-- ## Roadmap
 
 ### Próximas Funcionalidades
 - **Validación FHIR**: Soporte para estándares HL7 FHIR
@@ -350,4 +392,4 @@ Este proyecto está licenciado bajo la Licencia MIT - consulta el archivo [LICEN
 - **Detección de extensiones**: Adaptación automática a entorno de servidor
 - **API simplificada**: Métodos esenciales para desarrolladores hospitalarios
 - **Metadatos clínicos**: Soporte para información específica de salud
-- **Optimización de transparencias**: Logo profesional en códigos QR
+- **Optimización de transparencias**: Logo profesional en códigos QR -->
