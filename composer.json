@@ -1,0 +1,8 @@
+{
+  "name": "quralo/quralo-php",
+  "description": "Quralo PHP SDK",
+  "type": "library",
+  "license": "MIT",
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
