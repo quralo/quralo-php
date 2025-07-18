@@ -4,10 +4,10 @@ namespace Quralo;
 
 class Ecl
 {
-  public function encodePayload($organizationId, $person, $author, $metadata, $format, $signingKey = null, $encryptionKey = null, $ttlSeconds = 300)
+  public function encodePayload($clientId, $person, $author, $metadata, $format, $clientSecret = null, $ttlSeconds = 300)
   {
+    $timestamp = time() + $ttlSeconds;
     $compactPayload = array(
-      'o' => $organizationId,
       'p' => array(
         'ln' => isset($person['lastname']) ? $person['lastname'] : '',
         'fn' => isset($person['firstname']) ? $person['firstname'] : '',
@@ -20,49 +20,49 @@ class Ecl
         'it' => isset($author['person_id_type']) ? $author['person_id_type'] : '',
         'in' => isset($author['person_id_number']) ? $author['person_id_number'] : '',
       ),
-      'm' => $metadata,
-      'e' => time() + $ttlSeconds // Expiración
+      'm' => $metadata
     );
     
     if ($format === 'plain') {
       $json = json_encode($compactPayload);
       $compressed = function_exists('gzcompress') ? gzcompress($json, 9) : $json;
-      return 'qrl:1:ecl:p:' . base64_encode($compressed);
+      return 'QRL|v=1|id=' . $clientId . '|ts=' . $timestamp . '|data=' . rtrim(strtr(base64_encode($compressed), '+/', '-_'), '=');
     }
     
     if ($format === 'secure') {
-      if (empty($signingKey) || empty($encryptionKey)) {
-        throw new \Exception("Faltan claves para formato 'secure'");
+      if (empty($clientSecret)) {
+        throw new \Exception("Falta clientSecret para formato 'secure'");
       }
-      $signingKey = $this->normalizeKey($signingKey);
-      $encryptionKey = $this->normalizeKey($encryptionKey);
+      $clientSecret = $this->normalizeKey($clientSecret);
       $json = json_encode($compactPayload);
       $compressed = gzcompress($json);
-      $signature = hash_hmac('sha256', $compressed, $signingKey, true);
-      $payload = $compressed . $signature;
       $iv = openssl_random_pseudo_bytes(16);
-      $ciphertext = openssl_encrypt($payload, 'AES-256-CBC', $encryptionKey, OPENSSL_RAW_DATA, $iv);
+      $ciphertext = openssl_encrypt($compressed, 'AES-256-CBC', $clientSecret, OPENSSL_RAW_DATA, $iv);
       if ($ciphertext === false) {
         throw new \Exception("Error al cifrar el contenido");
       }
-      $final = $iv . $ciphertext;
-      return 'qrl:1:ecl:s:' . rtrim(strtr(base64_encode($final), '+/', '-_'), '=');
+      $data = $iv . $ciphertext;
+      $data_b64url = rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+      // Construir string base para MAC
+      $base = 'QRL|v=1|id=' . $clientId . '|ts=' . $timestamp . '|data=' . $data_b64url;
+      $mac = hash_hmac('sha256', $base, $clientSecret, true);
+      $mac_b64url = rtrim(strtr(base64_encode($mac), '+/', '-_'), '=');
+      return $base . '|mac=' . $mac_b64url;
     }
     throw new \Exception("Formato no soportado");
   }
   
-  public function generateQrCode($organizationId, $person, $author, $metadata, $options)
+  public function generateQrCode($clientId, $person, $author, $metadata, $options)
   {
     $format = isset($options['format']) ? $options['format'] : 'plain';
-    $signingKey = isset($options['signing_key']) ? $options['signing_key'] : null;
-    $encryptionKey = isset($options['encryption_key']) ? $options['encryption_key'] : null;
+    $clientSecret = isset($options['client_secret']) ? $options['client_secret'] : null;
     $ttlSeconds = isset($options['ttl_seconds']) ? $options['ttl_seconds'] : 300;
     $size = isset($options['size']) ? $options['size'] : 6;
     $margin = isset($options['margin']) ? $options['margin'] : 2;
     $errorCorrection = isset($options['error_correction']) ? strtoupper($options['error_correction']) : 'M';
     $includeLogo = isset($options['include_logo']) ? $options['include_logo'] : false;
     
-    $payload = $this->encodePayload($organizationId, $person, $author, $metadata, $format, $signingKey, $encryptionKey, $ttlSeconds);
+    $payload = $this->encodePayload($clientId, $person, $author, $metadata, $format, $clientSecret, $ttlSeconds);
     require_once __DIR__ . '/../vendor/aferrandini/phpqrcode/lib/PHPQRCode.php';
     $levels = array(
       'L' => \PHPQRCode\Constants::QR_ECLEVEL_L,

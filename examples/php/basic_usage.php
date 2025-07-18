@@ -7,7 +7,7 @@ use Quralo\Quralo;
 echo "=== Quralo PHP SDK - Healthcare System Integration Tools ===\n";
 echo "=== Integración de Sistemas Hospitalarios con Plataforma Quralo ===\n\n";
 
-$organizationId = 'c710e909-067a-4b05-8679-5a386cdd5e92';
+$clientId = 'c710e909-067a-4b05-8679-5a386cdd5e92';
 $person = [
     'lastname' => 'Smith',
     'firstname' => 'John',
@@ -29,7 +29,7 @@ $metadata = [
 $ecl = Quralo::ecl();
 
 // QR plano
-$dataUriQrPlain = $ecl->generateQrCode($organizationId, $person, $author, $metadata, array(
+$dataUriQrPlain = $ecl->generateQrCode($clientId, $person, $author, $metadata, array(
     'format' => 'plain',
     'ttl_seconds' => 600,
     'include_logo' => false,
@@ -38,13 +38,11 @@ $dataUriQrPlain = $ecl->generateQrCode($organizationId, $person, $author, $metad
 file_put_contents(__DIR__ . '/plain_qr.png', base64_decode(str_replace('data:image/png;base64,', '', $dataUriQrPlain)));
 echo "QR plano generado y guardado como plain_qr.png\n";
 
-$encryptionKey = '6927e247e82536c7623815b2a9580074bfb04aa2b3e8ae2ea2b44a1e78628d53'; // clave AES de 256 bits (64 chars hex)
-$signingKey = 'f0dce5b6a0bd24ff07aaec8835cfee7855bc6ccb6ffa9da5ee57ec7ea49b3c25';    // clave HMAC-SHA256 (64 chars hex)
+$clientSecret = '6927e247e82536c7623815b2a9580074bfb04aa2b3e8ae2ea2b44a1e78628d53'; // 32 bytes hex
 
-$dataUriQrSecure = $ecl->generateQrCode($organizationId, $person, $author, $metadata, array(
+$dataUriQrSecure = $ecl->generateQrCode($clientId, $person, $author, $metadata, array(
     'format' => 'secure',
-    'signing_key' => $signingKey,
-    'encryption_key' => $encryptionKey,
+    'client_secret' => $clientSecret,
     'ttl_seconds' => 600,
     'include_logo' => false,
 ));
@@ -65,68 +63,54 @@ function base64url_decode_php($data) {
     return base64_decode(strtr($data, '-_', '+/'));
 }
 
-function decode_secure_qr($qrPayload, $encryptionKey, $signingKey) {
-    // Elimina prefijo si existe
-    if (strpos($qrPayload, 'qrl:1:ecl:s:') === 0) {
-        $qrPayload = substr($qrPayload, strlen('qrl:1:ecl:s:'));
+function decode_secure_qr($qrPayload, $clientSecret) {
+    // Extraer campos del string
+    $parts = [];
+    foreach (explode('|', $qrPayload) as $kv) {
+        if (strpos($kv, '=') !== false) {
+            list($k, $v) = explode('=', $kv, 2);
+            $parts[$k] = $v;
+        }
     }
-
-    // Decodifica base64url
-    $bin = base64url_decode_php($qrPayload);
-
-    // Extrae IV (primeros 16 bytes)
+    if (!isset($parts['data']) || !isset($parts['mac']) || !isset($parts['ts']) || !isset($parts['id'])) {
+        throw new Exception("Formato de QR inválido");
+    }
+    $base = 'QRL|v=1|id=' . $parts['id'] . '|ts=' . $parts['ts'] . '|data=' . $parts['data'];
+    // Normalizar clave
+    if (ctype_xdigit($clientSecret) && strlen($clientSecret) === 64) {
+        $clientSecret = hex2bin($clientSecret);
+    }
+    // Verificar MAC
+    $expectedMac = hash_hmac('sha256', $base, $clientSecret, true);
+    $expectedMac_b64url = rtrim(strtr(base64_encode($expectedMac), '+/', '-_'), '=');
+    if (!hash_equals($expectedMac_b64url, $parts['mac'])) {
+        throw new Exception("MAC inválido");
+    }
+    // Decodificar y descifrar
+    $bin = base64url_decode_php($parts['data']);
     $iv = substr($bin, 0, 16);
     $ciphertext = substr($bin, 16);
-
-    // Normaliza claves (hex a binario si corresponde)
-    if (ctype_xdigit($encryptionKey) && strlen($encryptionKey) === 64) {
-        $encryptionKey = hex2bin($encryptionKey);
-    }
-    if (ctype_xdigit($signingKey) && strlen($signingKey) === 64) {
-        $signingKey = hex2bin($signingKey);
-    }
-
-    // Descifra con AES-256-CBC
-    $payload = openssl_decrypt($ciphertext, 'AES-256-CBC', $encryptionKey, OPENSSL_RAW_DATA, $iv);
-    if ($payload === false) {
+    $compressed = openssl_decrypt($ciphertext, 'AES-256-CBC', $clientSecret, OPENSSL_RAW_DATA, $iv);
+    if ($compressed === false) {
         throw new Exception("Error al descifrar el QR");
     }
-
-    // Separa firma (últimos 32 bytes) y datos comprimidos
-    $signature = substr($payload, -32);
-    $compressedData = substr($payload, 0, -32);
-
-    // Verifica HMAC
-    $expectedSig = hash_hmac('sha256', $compressedData, $signingKey, true);
-    if (!hash_equals($signature, $expectedSig)) {
-        throw new Exception("Firma HMAC inválida.");
-    }
-
-    // Descomprime
-    $json = @gzuncompress($compressedData);
+    $json = @gzuncompress($compressed);
     if ($json === false) {
         throw new Exception("Error al descomprimir los datos");
     }
-
-    // Decodifica JSON
     $parsed = json_decode($json, true);
-
-    // Verifica expiración
+    // Verificar expiración
     $now = time();
-    if (isset($parsed['e']) && $now > $parsed['e']) {
+    if ($now > intval($parts['ts'])) {
         throw new Exception("El QR ha expirado.");
     }
-
     return $parsed;
 }
 
 // Prueba de decodificación del QR seguro generado
 try {
-    // Extrae el payload del QR seguro generado
-    $payloadSecure = $ecl->encodePayload($organizationId, $person, $author, $metadata, 'secure', $signingKey, $encryptionKey, 600);
-
-    $resultado = decode_secure_qr($payloadSecure, $encryptionKey, $signingKey);
-
+    $payloadSecure = $ecl->encodePayload($clientId, $person, $author, $metadata, 'secure', $clientSecret, 600);
+    $resultado = decode_secure_qr($payloadSecure, $clientSecret);
     echo "\nDecodificación del QR seguro:\n";
     print_r($resultado);
 } catch (Exception $e) {
