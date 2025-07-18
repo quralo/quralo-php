@@ -49,14 +49,14 @@ namespace Quralo;
 */
 class Quralo
 {
-    /**
-     * Devuelve una instancia del dominio ECL
-     * @return Ecl
-     */
-    public static function ecl()
-    {
-        return new Ecl();
-    }
-    // Aquí se pueden agregar métodos para otros dominios en el futuro, por ejemplo:
-    // public static function webhooks() { return new Webhooks(); }
+  /**
+  * Devuelve una instancia del dominio ECL
+  * @return Ecl
+  */
+  public static function ecl()
+  {
+    return new Ecl();
+  }
+  // Aquí se pueden agregar métodos para otros dominios en el futuro, por ejemplo:
+  // public static function webhooks() { return new Webhooks(); }
 }
