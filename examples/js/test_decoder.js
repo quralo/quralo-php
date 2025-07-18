@@ -30,7 +30,6 @@ function decryptQRToken(qrToken) {
         // Separar firma (últimos 32 bytes) y datos comprimidos
         const signature = decrypted.slice(-32); // SHA-256 = 32 bytes
         const compressedData = decrypted.slice(0, -32);
-        console.log(compressedData)
 
         // Verificar HMAC
         const expectedSig = crypto.createHmac('sha256', SIGNING_KEY).update(compressedData).digest();
@@ -58,7 +57,7 @@ function decryptQRToken(qrToken) {
 
 // 🧪 Prueba
 
-const qrToken = 'R5A3B0YFbuoGoCfnp6-CQ7cXKx7sUFDawD__PsPGgVNScjIcwbSJVo3qhDZyHpktp7hcfftonKEzZ7ITETaqiXj8F2bTmPJPRwhZp-WHL71EfPPtVzJvrRjNcxoM4i-FI0gR8BwPpLCi10IQfH0DPT_Ci9Qpn0TONp7JUQ5HulQJEf-owIPaNEZf50VfCdVdP_DKoRhR5IW4z593V_2-fFoeaOtizshYDwONkoLNx4w4ZCsNurwxJMH5gWZeTmZ5sgRLKfK69ucizJCA67d0Sh6KcRvNjlUL1ru3QZ10O98'; // generado desde PHP
+const qrToken = 'MnMY-0xUIRjV-YRo4KYVurMe38bQ0yJGX_5LtNN7O5cLmM9ukxVNxPNZCnAc1WLNFwVF9I4Gk482UZV7tmaBpSc7PtqHlhv_RVKXBV-wlAIZUgOW8Kmt05SahEcJSmz45VbJ38mD8QWxm_2rL9LhQyfjAMRHqgs5AmPcv8iS3O6Wtpd6V6hSjOTFIir1RDVAOr7PsbQLv9hJBTAbHBFOWuXkHc0qV0kI3ZKRtaHCmk8-2rHlMY2OAfOXyfXfGkM8dj_-H8o9zjaxMe7MZ_2oF80PwPb4N5vmooasG16Dcc8'; // generado desde PHP
 
 const resultado = decryptQRToken(qrToken);
 

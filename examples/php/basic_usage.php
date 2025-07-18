@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 
 use Quralo\Quralo;
 
@@ -37,18 +37,6 @@ $dataUriQrPlain = $quralo->generateQrCode($organizationId, $person, $author, $me
 
 file_put_contents(__DIR__ . '/plain_qr.png', base64_decode(str_replace('data:image/png;base64,', '', $dataUriQrPlain)));
 echo "QR plano generado y guardado como plain_qr.png\n";
-
-// QR seguro (HMAC + AES)
-// Claves (generadas previamente y compartidas con este cliente)
-// define('ENCRYPTION_KEY', pack('H*', '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')); // 32 bytes
-// define('SIGNING_KEY', 'secreto_hmac_solo_app');
-// $signingKey = hex2bin('aabbccddeeff11223344556677889900aabbccddeeff11223344556677889900');
-// $encryptionKey = hex2bin('ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100');
-// $signingKey="secreto_hmac_firmado_por_tu_app";
-// $encryptionKey=pack('H*', '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
-
-// $encryptionKey = pack('H*', '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'); // 32 bytes
-// $signingKey = 'secreto_hmac_firmado_por_tu_app';
 
 $encryptionKey = '6927e247e82536c7623815b2a9580074bfb04aa2b3e8ae2ea2b44a1e78628d53'; // clave AES de 256 bits (64 chars hex)
 $signingKey = 'f0dce5b6a0bd24ff07aaec8835cfee7855bc6ccb6ffa9da5ee57ec7ea49b3c25';    // clave HMAC-SHA256 (64 chars hex)
