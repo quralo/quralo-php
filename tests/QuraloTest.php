@@ -19,7 +19,7 @@ class QuraloTest extends TestCase
 
     public function testEclInstantiation()
     {
-        $this->assertInstanceOf('Quralo\\Ecl', $this->ecl);
+        $this->assertInstanceOf('Quralo\Ecl', $this->ecl);
     }
 
     public function testGenerateQrCodeReturnsDataUri()
@@ -28,7 +28,7 @@ class QuraloTest extends TestCase
             $this->markTestSkipped('GD extension is not available');
         }
 
-        $organizationId = 'ORG-TEST';
+        $clientId = 'ORG-TEST';
         $person = array(
             'lastname' => 'Test',
             'firstname' => 'User',
@@ -41,8 +41,10 @@ class QuraloTest extends TestCase
             'person_id_type' => 'DNI',
             'person_id_number' => '99999999'
         );
+        $metadata = null;
+        $options = array();
 
-        $qrCode = $this->ecl->generateQrCode($organizationId, $person, $author);
+        $qrCode = $this->ecl->generateQrCode($clientId, null, $person, $author, $metadata, $options);
 
         $this->assertStringStartsWith('data:image/png;base64,', $qrCode);
     }
@@ -53,10 +55,10 @@ class QuraloTest extends TestCase
             $this->markTestSkipped('GD extension is not available');
         }
 
-        $organizationId = 'ORG-CUSTOM';
+        $clientId = 'ORG-CUSTOM';
         $person = array('lastname' => 'Custom', 'firstname' => 'Test');
         $author = array('person_id_type' => 'DNI', 'person_id_number' => '55555555');
-        
+        $metadata = null;
         $qrOptions = array(
             'size' => 6,
             'margin' => 2,
@@ -64,7 +66,7 @@ class QuraloTest extends TestCase
             'include_logo' => true
         );
 
-        $qrCode = $this->ecl->generateQrCode($organizationId, $person, $author, null, $qrOptions);
+        $qrCode = $this->ecl->generateQrCode($clientId, null, $person, $author, $metadata, $qrOptions);
 
         $this->assertStringStartsWith('data:image/png;base64,', $qrCode);
     }
@@ -75,10 +77,10 @@ class QuraloTest extends TestCase
             $this->markTestSkipped('GD extension is not available');
         }
 
-        $organizationId = 'ORG-NO-LOGO';
+        $clientId = 'ORG-NO-LOGO';
         $person = array('lastname' => 'NoLogo', 'firstname' => 'Test');
         $author = array('person_id_type' => 'DNI', 'person_id_number' => '66666666');
-        
+        $metadata = null;
         $qrOptions = array(
             'size' => 6,
             'margin' => 2,
@@ -86,21 +88,27 @@ class QuraloTest extends TestCase
             'include_logo' => false
         );
 
-        $qrCode = $this->ecl->generateQrCode($organizationId, $person, $author, null, $qrOptions);
+        $qrCode = $this->ecl->generateQrCode($clientId, null, $person, $author, $metadata, $qrOptions);
 
         $this->assertStringStartsWith('data:image/png;base64,', $qrCode);
     }
 
-    // Los siguientes tests han sido comentados porque los métodos structureData y generateQrCodeFromStructuredData
-    // ya no existen en la clase Ecl. Si los necesitas, deberías implementarlos en Ecl o adaptar los tests.
-
-    /*
-    public function testStructureDataWithCompleteData() { ... }
-    public function testStructureDataWithMissingPersonFields() { ... }
-    public function testStructureDataWithNullMetadata() { ... }
-    public function testGenerateQrCodeFromStructuredData() { ... }
-    public function testDataStructure() { ... }
-    public function testStaticCreateMethod() { ... }
-    public function testQuraloInstantiation() { ... }
-    */
+    public function testSecureQrCode()
+    {
+        if (!extension_loaded('gd')) {
+            $this->markTestSkipped('GD extension is not available');
+        }
+        $clientId = 'ORG-SECURE';
+        $clientSecret = '6927e247e82536c7623815b2a9580074bfb04aa2b3e8ae2ea2b44a1e78628d53';
+        $person = array('lastname' => 'Secure', 'firstname' => 'Test');
+        $author = array('person_id_type' => 'DNI', 'person_id_number' => '77777777');
+        $metadata = array('test' => 'meta');
+        $qrOptions = array(
+            'format' => 'secure',
+            'ttl_seconds' => 600,
+            'include_logo' => false
+        );
+        $qrCode = $this->ecl->generateQrCode($clientId, $clientSecret, $person, $author, $metadata, $qrOptions);
+        $this->assertStringStartsWith('data:image/png;base64,', $qrCode);
+    }
 }

@@ -2,28 +2,51 @@
 
 Librería para integración de sistemas de salud con la plataforma Quralo. Permite generar códigos QR compactos y seguros para flujos de trabajo interoperables.
 
-## Modos soportados
+La SDK de Quralo está diseñada en módulos independientes para facilitar la integración flexible con distintos flujos y sistemas. Actualmente, el único módulo disponible es:
+
+## Vinculación de Contexto Externo (External Context Linking, ECL)
+
+El módulo ECL permite que sistemas externos —como un HIS (Health Information System) u otros integradores— adjunten un bloque de información contextual personalizada al interactuar con Quralo. Esto es útil tanto al enviar solicitudes desde el HIS hacia Quralo, como cuando un usuario utiliza Quralo (por ejemplo, escaneando con Quralo Médicos un QR generado por el HIS).
+
+Quralo no interpreta ni modifica este contexto: simplemente lo almacena temporalmente y lo devuelve intacto junto con la respuesta o cuando se solicite en futuras interacciones.
+
+### 📦 ¿Qué es el "contexto externo"?
+El "contexto externo" es cualquier paquete de datos (por ejemplo, un identificador, metadatos o referencias internas del HIS) que el sistema externo necesita mantener a lo largo de una transacción, acción del usuario o evento. Quralo actúa como un "contenedor sellado", transportando este contexto sin conocer ni depender de su estructura o propósito.
+
+### 🧩 Casos de uso
+- Integraciones con sistemas clínicos (HIS) que requieren que se les devuelva información propia para mantener la coherencia de estado y contextualización de la acción del usuario.
+- Escenarios donde Quralo actúa como proxy o middleware, sin lógica de negocio propia sobre el contexto.
+- Mejora la interoperabilidad asimétrica, permitiendo que el sistema externo mantenga su lógica y control sin imponerla a Quralo.
+
+### ⚠️ Consideraciones
+- El contenido del contexto no se valida ni se interpreta: es responsabilidad del sistema externo asegurar su integridad y uso adecuado.
+- Si el contexto contiene datos sensibles o identificadores, considerar las implicancias en auditoría, cumplimiento y privacidad según las políticas vigentes.
+
+### Modos soportados
 - `plain`: JSON comprimido (gzip+base64url), sin firma ni cifrado.
 - `secure`: JSON comprimido y cifrado con AES-256-CBC, autenticado con HMAC-SHA256 usando una única clave `client_secret`.
 
-## Formato del QR
+### Formato del QR
 
 ```
-QRL|v=1|id=<client_id>|ts=<timestamp>|data=<base64url(ciphertext)>|mac=<base64url(hmac)>
+QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
 ```
-- `v`: versión del esquema.
-- `id`: Client ID (visible, no cifrado).
-- `ts`: timestamp de expiración o generación.
-- `data`: payload comprimido y cifrado (base64url).
-- `mac`: HMAC-SHA256 de todo lo anterior (base64url), para integridad.
+- **QRL**: prefijo fijo
+- **v=1**: versión del esquema
+- **<client_id>**: identificador del cliente (visible, no cifrado)
+- **<timestamp>**: expiración (UNIX epoch, segundos)
+- **<data>**: payload comprimido y cifrado (base64url)
+- **<mac>**: HMAC-SHA256 de la cadena anterior (base64url), para integridad
 
-## Ejemplo de uso
+> **Importante:** El orden de los campos es estricto y no se incluyen nombres de campo. El significado de cada campo depende de la posición.
+
+### Ejemplo de uso
 
 ```php
 use Quralo\Quralo;
 
 $ecl = Quralo::ecl();
-$clientId = 'cliente123';
+$clientId = 'c710e909-067a-4b05-8679-5a386cdd5e92';
 $person = [
     'lastname' => 'Pérez',
     'firstname' => 'Ana',
@@ -52,67 +75,14 @@ $qr2 = $ecl->generateQrCode($clientId, $person, $author, $metadata, [
 ]);
 ```
 
-## Opciones adicionales
+### Opciones adicionales
 - `size`: tamaño del QR (por defecto 6)
 - `margin`: margen (por defecto 2)
 - `error_correction`: nivel de corrección ('L', 'M', 'Q', 'H'; por defecto 'M')
 - `include_logo`: incluir logo en el QR (requiere GD y logo-qr.png)
 
-## Verificación y descifrado en backend (PHP)
 
-```php
-function base64url_decode($data) {
-    $remainder = strlen($data) % 4;
-    if ($remainder) {
-        $padlen = 4 - $remainder;
-        $data .= str_repeat('=', $padlen);
-    }
-    return base64_decode(strtr($data, '-_', '+/'));
-}
-
-function decode_secure_qr($qrPayload, $clientSecret) {
-    $parts = [];
-    foreach (explode('|', $qrPayload) as $kv) {
-        if (strpos($kv, '=') !== false) {
-            list($k, $v) = explode('=', $kv, 2);
-            $parts[$k] = $v;
-        }
-    }
-    if (!isset($parts['data']) || !isset($parts['mac']) || !isset($parts['ts']) || !isset($parts['id'])) {
-        throw new Exception("Formato de QR inválido");
-    }
-    $base = 'QRL|v=1|id=' . $parts['id'] . '|ts=' . $parts['ts'] . '|data=' . $parts['data'];
-    if (ctype_xdigit($clientSecret) && strlen($clientSecret) === 64) {
-        $clientSecret = hex2bin($clientSecret);
-    }
-    $expectedMac = hash_hmac('sha256', $base, $clientSecret, true);
-    $expectedMac_b64url = rtrim(strtr(base64_encode($expectedMac), '+/', '-_'), '=');
-    if (!hash_equals($expectedMac_b64url, $parts['mac'])) {
-        throw new Exception("MAC inválido");
-    }
-    $bin = base64url_decode($parts['data']);
-    $iv = substr($bin, 0, 16);
-    $ciphertext = substr($bin, 16);
-    $compressed = openssl_decrypt($ciphertext, 'AES-256-CBC', $clientSecret, OPENSSL_RAW_DATA, $iv);
-    if ($compressed === false) {
-        throw new Exception("Error al descifrar el QR");
-    }
-    $json = @gzuncompress($compressed);
-    if ($json === false) {
-        throw new Exception("Error al descomprimir los datos");
-    }
-    $parsed = json_decode($json, true);
-    $now = time();
-    if ($now > intval($parts['ts'])) {
-        throw new Exception("El QR ha expirado.");
-    }
-    return $parsed;
-}
-```
-
----
-
-## Notas
+### Notas
 - Para 'secure', la clave puede ser binaria de 32 bytes, hex (64 chars) o base64 (44 chars). La librería la normaliza automáticamente.
 - El QR generado es compacto, seguro y solo tu backend puede descifrarlo y validarlo.
 - No se usa JWT/JWS/JWE ni claves públicas/privadas asimétricas.

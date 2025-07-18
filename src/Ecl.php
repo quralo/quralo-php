@@ -4,7 +4,14 @@ namespace Quralo;
 
 class Ecl
 {
-  public function encodePayload($clientId, $person, $author, $metadata, $format, $clientSecret = null, $ttlSeconds = 300)
+  /**
+   * Genera el payload QR en formato compacto:
+   * QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
+   * - client_id: identificador del cliente (visible)
+   * - clientSecret: clave secreta para firmar/cifrar (opcional en 'plain')
+   * - ...otros parámetros
+   */
+  public function encodePayload($clientId, $clientSecret = null, $person, $author, $metadata, $format, $ttlSeconds = 300)
   {
     $timestamp = time() + $ttlSeconds;
     $compactPayload = array(
@@ -26,7 +33,9 @@ class Ecl
     if ($format === 'plain') {
       $json = json_encode($compactPayload);
       $compressed = function_exists('gzcompress') ? gzcompress($json, 9) : $json;
-      return 'QRL|v=1|id=' . $clientId . '|ts=' . $timestamp . '|data=' . rtrim(strtr(base64_encode($compressed), '+/', '-_'), '=');
+      $data_b64url = rtrim(strtr(base64_encode($compressed), '+/', '-_'), '=');
+      // QRL|v=1|<client_id>|<timestamp>|<data>
+      return 'QRL|v=1|' . $clientId . '|' . $timestamp . '|' . $data_b64url;
     }
     
     if ($format === 'secure') {
@@ -43,26 +52,30 @@ class Ecl
       }
       $data = $iv . $ciphertext;
       $data_b64url = rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-      // Construir string base para MAC
-      $base = 'QRL|v=1|id=' . $clientId . '|ts=' . $timestamp . '|data=' . $data_b64url;
+      // Construir string base para MAC (sin nombres de campos)
+      $base = 'QRL|v=1|' . $clientId . '|' . $timestamp . '|' . $data_b64url;
       $mac = hash_hmac('sha256', $base, $clientSecret, true);
       $mac_b64url = rtrim(strtr(base64_encode($mac), '+/', '-_'), '=');
-      return $base . '|mac=' . $mac_b64url;
+      // QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
+      return $base . '|' . $mac_b64url;
     }
     throw new \Exception("Formato no soportado");
   }
   
-  public function generateQrCode($clientId, $person, $author, $metadata, $options)
+  /**
+   * Genera un código QR PNG (data URI) con el payload generado.
+   * El formato del payload es: QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
+   */
+  public function generateQrCode($clientId, $clientSecret = null, $person, $author, $metadata, $options)
   {
     $format = isset($options['format']) ? $options['format'] : 'plain';
-    $clientSecret = isset($options['client_secret']) ? $options['client_secret'] : null;
     $ttlSeconds = isset($options['ttl_seconds']) ? $options['ttl_seconds'] : 300;
     $size = isset($options['size']) ? $options['size'] : 6;
     $margin = isset($options['margin']) ? $options['margin'] : 2;
     $errorCorrection = isset($options['error_correction']) ? strtoupper($options['error_correction']) : 'M';
     $includeLogo = isset($options['include_logo']) ? $options['include_logo'] : false;
     
-    $payload = $this->encodePayload($clientId, $person, $author, $metadata, $format, $clientSecret, $ttlSeconds);
+    $payload = $this->encodePayload($clientId, $clientSecret, $person, $author, $metadata, $format, $ttlSeconds);
     require_once __DIR__ . '/../vendor/aferrandini/phpqrcode/lib/PHPQRCode.php';
     $levels = array(
       'L' => \PHPQRCode\Constants::QR_ECLEVEL_L,
@@ -81,6 +94,9 @@ class Ecl
     return 'data:image/png;base64,' . base64_encode($imageData);
   }
   
+  /**
+   * Normaliza la clave secreta: acepta binario, hex (64 chars) o base64 (44 chars).
+   */
   private function normalizeKey($keyString)
   {
     if (strlen($keyString) === 32) {
@@ -100,6 +116,9 @@ class Ecl
     throw new \Exception("Clave debe ser binaria de 32 bytes, hex de 64 chars o base64 de 44 chars");
   }
   
+  /**
+   * Inserta el logo en el QR si está disponible.
+   */
   private function addLogoToQrCode($qrFile)
   {
     if (!extension_loaded('gd')) {

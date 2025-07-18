@@ -12,29 +12,30 @@ function base64urlDecode(input) {
     return Buffer.from(input, 'base64');
 }
 
-// Decodificación y validación del QR
+/**
+ * Decodifica un QR seguro en el formato:
+ * QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
+ * - client_id: identificador del cliente
+ * - timestamp: expiración (UNIX)
+ * - data: payload comprimido y cifrado (base64url)
+ * - mac: HMAC-SHA256 de la cadena anterior (base64url)
+ */
 function decodeSecureQR(qrString) {
     try {
-        // Parsear campos
-        const parts = {};
-        qrString.split('|').forEach(kv => {
-            if (kv.includes('=')) {
-                const [k, v] = kv.split('=', 2);
-                parts[k] = v;
-            }
-        });
-        if (!parts['data'] || !parts['mac'] || !parts['ts'] || !parts['id']) {
+        const parts = qrString.split('|');
+        if (parts.length !== 6 || parts[0] !== 'QRL' || parts[1] !== 'v=1') {
             throw new Error('Formato de QR inválido');
         }
-        const base = `QRL|v=1|id=${parts['id']}|ts=${parts['ts']}|data=${parts['data']}`;
+        const [ , , clientId, timestamp, data_b64url, mac_b64url ] = parts;
+        const base = parts.slice(0, 5).join('|'); // QRL|v=1|<client_id>|<timestamp>|<data>
         // Verificar MAC
         const expectedMac = crypto.createHmac('sha256', CLIENT_SECRET).update(base).digest();
         const expectedMac_b64url = expectedMac.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-        if (expectedMac_b64url !== parts['mac']) {
+        if (expectedMac_b64url !== mac_b64url) {
             throw new Error('MAC inválido');
         }
         // Decodificar y descifrar
-        const bin = base64urlDecode(parts['data']);
+        const bin = base64urlDecode(data_b64url);
         const iv = bin.slice(0, 16);
         const ciphertext = bin.slice(16);
         const decipher = crypto.createDecipheriv('aes-256-cbc', CLIENT_SECRET, iv);
@@ -45,7 +46,7 @@ function decodeSecureQR(qrString) {
         const parsed = JSON.parse(jsonStr);
         // Verificar expiración
         const now = Math.floor(Date.now() / 1000);
-        if (now > parseInt(parts['ts'], 10)) {
+        if (now > parseInt(timestamp, 10)) {
             throw new Error('El QR ha expirado.');
         }
         return parsed;
@@ -55,7 +56,8 @@ function decodeSecureQR(qrString) {
 }
 
 // 🧪 Prueba
-const qrString = 'QRL|v=1|id=cliente123|ts=1752845098|data=QPE-TyBFYmhL3xB6rJrY9cX-gotZ9AlnWk1Ey9OAC_iaj_uQDul_jieECkWTis24iSf4TyjqhOZ_TEc9A6b65YkrFipOQNIetyDO5MwzxyBr3ZqfAKXHvWablHPn6sX5ou6rkekvANqJfXRCI5PTZ1Odg9LlY9Cq8M-_g-FBZ6m_-Czgupkkhed61-Cuo7HSfm-UEE51f5Awg1jJmfh1rQ|mac=UJ95ZHQ3OSEdQskS45mHWEni38Tloli8vcbFz5lrfD0'; // Reemplazar por un QR real generado
+// Ejemplo: QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
+const qrString = 'QRL|v=1|c710e909-067a-4b05-8679-5a386cdd5e92|1752845098|QPE-TyBFYmhL3xB6rJrY9cX-gotZ9AlnWk1Ey9OAC_iaj_uQDul_jieECkWTis24iSf4TyjqhOZ_TEc9A6b65YkrFipOQNIetyDO5MwzxyBr3ZqfAKXHvWablHPn6sX5ou6rkekvANqJfXRCI5PTZ1Odg9LlY9Cq8M-_g-FBZ6m_-Czgupkkhed61-Cuo7HSfm-UEE51f5Awg1jJmfh1rQ|UJ95ZHQ3OSEdQskS45mHWEni38Tloli8vcbFz5lrfD0';
 const resultado = decodeSecureQR(qrString);
 console.log('Resultado:', resultado);
 
