@@ -11,7 +11,7 @@ Librería para integración de sistemas de salud con la plataforma Quralo. Permi
 ```php
 use Quralo\Quralo;
 
-$quralo = Quralo::create();
+$ecl = Quralo::ecl();
 $person = [
     'lastname' => 'Pérez',
     'firstname' => 'Ana',
@@ -27,14 +27,14 @@ $author = [
 $metadata = [ 'vacuna' => 'COVID-19', 'dosis' => 2 ];
 
 // QR plano
-$qr1 = $quralo->generateQrCode('ORG001', $person, $author, $metadata, [
+$qr1 = $ecl->generateQrCode('ORG001', $person, $author, $metadata, [
     'format' => 'plain'
 ]);
 
 // QR seguro (firmado y cifrado)
 $signingKey = random_bytes(32); // Puede ser binario, base64 o hex
 $encryptionKey = random_bytes(32);
-$qr2 = $quralo->generateQrCode('ORG001', $person, $author, $metadata, [
+$qr2 = $ecl->generateQrCode('ORG001', $person, $author, $metadata, [
     'format' => 'secure',
     'signing_key' => $signingKey,
     'encryption_key' => $encryptionKey,

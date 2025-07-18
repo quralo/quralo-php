@@ -26,10 +26,10 @@ $metadata = [
     'doctor_id' => "643"
 ];
 
-$quralo = Quralo::create();
+$ecl = Quralo::ecl();
 
 // QR plano
-$dataUriQrPlain = $quralo->generateQrCode($organizationId, $person, $author, $metadata, array(
+$dataUriQrPlain = $ecl->generateQrCode($organizationId, $person, $author, $metadata, array(
     'format' => 'plain',
     'ttl_seconds' => 600,
     'include_logo' => false,
@@ -41,14 +41,13 @@ echo "QR plano generado y guardado como plain_qr.png\n";
 $encryptionKey = '6927e247e82536c7623815b2a9580074bfb04aa2b3e8ae2ea2b44a1e78628d53'; // clave AES de 256 bits (64 chars hex)
 $signingKey = 'f0dce5b6a0bd24ff07aaec8835cfee7855bc6ccb6ffa9da5ee57ec7ea49b3c25';    // clave HMAC-SHA256 (64 chars hex)
 
-$dataUriQrSecure = $quralo->generateQrCode($organizationId, $person, $author, $metadata, array(
+$dataUriQrSecure = $ecl->generateQrCode($organizationId, $person, $author, $metadata, array(
     'format' => 'secure',
     'signing_key' => $signingKey,
     'encryption_key' => $encryptionKey,
     'ttl_seconds' => 600,
     'include_logo' => false,
 ));
-
 
 file_put_contents(__DIR__ . '/secure_qr.png', base64_decode(str_replace('data:image/png;base64,', '', $dataUriQrSecure)));
 echo "\nQR seguro generado y guardado como secure_qr.png\n";
@@ -68,8 +67,8 @@ function base64url_decode_php($data) {
 
 function decode_secure_qr($qrPayload, $encryptionKey, $signingKey) {
     // Elimina prefijo si existe
-    if (strpos($qrPayload, 'qrl:v1:s:') === 0) {
-        $qrPayload = substr($qrPayload, strlen('qrl:v1:s:'));
+    if (strpos($qrPayload, 'qrl:1:ecl:s:') === 0) {
+        $qrPayload = substr($qrPayload, strlen('qrl:1:ecl:s:'));
     }
 
     // Decodifica base64url
@@ -124,7 +123,7 @@ function decode_secure_qr($qrPayload, $encryptionKey, $signingKey) {
 // Prueba de decodificación del QR seguro generado
 try {
     // Extrae el payload del QR seguro generado
-    $payloadSecure = $quralo->encodePayload($organizationId, $person, $author, $metadata, 'secure', $signingKey, $encryptionKey, 600);
+    $payloadSecure = $ecl->encodePayload($organizationId, $person, $author, $metadata, 'secure', $signingKey, $encryptionKey, 600);
 
     $resultado = decode_secure_qr($payloadSecure, $encryptionKey, $signingKey);
 
