@@ -1,3 +1,24 @@
+# 
+# ==============================
+# ¿Cómo usar este docker-compose?
+# ==============================
+#
+# Este archivo docker-compose.yml permite ejecutar el SDK Quralo PHP en un contenedor con PHP 5.6 y Apache.
+#
+# Ejemplo de uso:
+#
+#   docker compose run quralo-php php examples/php/basic_usage.php
+#
+# Esto ejecutará el ejemplo de uso básico del SDK dentro del contenedor.
+#
+# También puedes iniciar el contenedor en modo interactivo para pruebas:
+#
+#   docker compose run --rm -it quralo-php bash
+#
+# El código fuente de tu proyecto estará disponible en /app dentro del contenedor.
+#
+# Nota: Asegúrate de tener Docker y Docker Compose instalados en tu sistema.
+
 services:
   quralo-php:
     image: webdevops/php-apache:5.6
