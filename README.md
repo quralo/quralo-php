@@ -2,9 +2,19 @@
 
 Librería para integración de sistemas de salud con la plataforma Quralo. Permite generar códigos QR compactos y seguros para flujos de trabajo interoperables.
 
-La SDK de Quralo está diseñada en módulos independientes para facilitar la integración flexible con distintos flujos y sistemas. Actualmente, el único módulo disponible es:
+La SDK de Quralo está diseñada en módulos independientes para facilitar la integración flexible con distintos flujos y sistemas.
 
-## Vinculación de Contexto Externo (External Context Linking, ECL)
+## Instalación
+
+Instalá la librería en tu proyecto PHP usando Composer:
+
+```bash
+composer require quralo/quralo-php
+```
+
+Esto descargará e instalará automáticamente la última versión estable de la SDK y sus dependencias.
+
+## Módulo de Vinculación de Contexto Externo (External Context Linking, ECL)
 
 El módulo ECL permite que sistemas externos —como un HIS (Health Information System) u otros integradores— adjunten un bloque de información contextual personalizada al interactuar con Quralo. Esto es útil tanto al enviar solicitudes desde el HIS hacia Quralo, como cuando un usuario utiliza Quralo (por ejemplo, escaneando con Quralo Médicos un QR generado por el HIS).
 
