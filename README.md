@@ -22,17 +22,14 @@ El "contexto externo" es cualquier paquete de datos (por ejemplo, un identificad
 - El contenido del contexto no se valida ni se interpreta: es responsabilidad del sistema externo asegurar su integridad y uso adecuado.
 - Si el contexto contiene datos sensibles o identificadores, considerar las implicancias en auditoría, cumplimiento y privacidad según las políticas vigentes.
 
-### Modos soportados
-- `plain`: JSON comprimido (gzip+base64url), sin firma ni cifrado.
-- `secure`: JSON comprimido y cifrado con AES-256-CBC, autenticado con HMAC-SHA256 usando una única clave `client_secret`.
-
 ### Formato del QR
 
 ```
-QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
+QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
 ```
 - **QRL**: prefijo fijo
 - **v=1**: versión del esquema
+- **ecl**: identificador del módulo (actualmente único)
 - **<client_id>**: identificador del cliente (visible, no cifrado)
 - **<timestamp>**: expiración (UNIX epoch, segundos)
 - **<data>**: payload comprimido y cifrado (base64url)
@@ -47,6 +44,7 @@ use Quralo\Quralo;
 
 $ecl = Quralo::ecl();
 $clientId = 'c710e909-067a-4b05-8679-5a386cdd5e92';
+$clientSecret = '6927e247e82536c7623815b2a9580074bfb04aa2b3e8ae2ea2b44a1e78628d53';
 $person = [
     'lastname' => 'Pérez',
     'firstname' => 'Ana',
@@ -61,16 +59,7 @@ $author = [
 ];
 $metadata = [ 'vacuna' => 'COVID-19', 'dosis' => 2 ];
 
-// QR plano
-$qr1 = $ecl->generateQrCode($clientId, $person, $author, $metadata, [
-    'format' => 'plain'
-]);
-
-// QR seguro (firmado y cifrado)
-$clientSecret = random_bytes(32); // Puede ser binario, base64 o hex
-$qr2 = $ecl->generateQrCode($clientId, $person, $author, $metadata, [
-    'format' => 'secure',
-    'client_secret' => $clientSecret,
+$qr = $ecl->generateQrCode($clientId, $clientSecret, $person, $author, $metadata, [
     'ttl_seconds' => 300 // opcional
 ]);
 ```
@@ -81,9 +70,64 @@ $qr2 = $ecl->generateQrCode($clientId, $person, $author, $metadata, [
 - `error_correction`: nivel de corrección ('L', 'M', 'Q', 'H'; por defecto 'M')
 - `include_logo`: incluir logo en el QR (requiere GD y logo-qr.png)
 
+### Verificación y descifrado en backend (PHP)
+
+```php
+/**
+ * Decodifica un QR seguro en el formato:
+ * QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
+ * - ecl: identificador del módulo
+ * - client_id: identificador del cliente
+ * - timestamp: expiración (UNIX)
+ * - data: payload comprimido y cifrado (base64url)
+ * - mac: HMAC-SHA256 de la cadena anterior (base64url)
+ */
+function base64url_decode($data) {
+    $remainder = strlen($data) % 4;
+    if ($remainder) {
+        $padlen = 4 - $remainder;
+        $data .= str_repeat('=', $padlen);
+    }
+    return base64_decode(strtr($data, '-_', '+/'));
+}
+
+function decode_secure_qr($qrPayload, $clientSecret) {
+    $parts = explode('|', $qrPayload);
+    if (count($parts) !== 7 || $parts[0] !== 'QRL' || $parts[1] !== 'v=1' || $parts[2] !== 'ecl') {
+        throw new Exception("Formato de QR inválido");
+    }
+    list(, , $module, $clientId, $timestamp, $data_b64url, $mac_b64url) = $parts;
+    $base = implode('|', array_slice($parts, 0, 6)); // QRL|v=1|ecl|<client_id>|<timestamp>|<data>
+    if (ctype_xdigit($clientSecret) && strlen($clientSecret) === 64) {
+        $clientSecret = hex2bin($clientSecret);
+    }
+    $expectedMac = hash_hmac('sha256', $base, $clientSecret, true);
+    $expectedMac_b64url = rtrim(strtr(base64_encode($expectedMac), '+/', '-_'), '=');
+    if (!hash_equals($expectedMac_b64url, $mac_b64url)) {
+        throw new Exception("MAC inválido");
+    }
+    $bin = base64url_decode($data_b64url);
+    $iv = substr($bin, 0, 16);
+    $ciphertext = substr($bin, 16);
+    $compressed = openssl_decrypt($ciphertext, 'AES-256-CBC', $clientSecret, OPENSSL_RAW_DATA, $iv);
+    if ($compressed === false) {
+        throw new Exception("Error al descifrar el QR");
+    }
+    $json = @gzuncompress($compressed);
+    if ($json === false) {
+        throw new Exception("Error al descomprimir los datos");
+    }
+    $parsed = json_decode($json, true);
+    $now = time();
+    if ($now > intval($timestamp)) {
+        throw new Exception("El QR ha expirado.");
+    }
+    return $parsed;
+}
+```
 
 ### Notas
-- Para 'secure', la clave puede ser binaria de 32 bytes, hex (64 chars) o base64 (44 chars). La librería la normaliza automáticamente.
+- La clave puede ser binaria de 32 bytes, hex (64 chars) o base64 (44 chars). La librería la normaliza automáticamente.
 - El QR generado es compacto, seguro y solo tu backend puede descifrarlo y validarlo.
 - No se usa JWT/JWS/JWE ni claves públicas/privadas asimétricas.
 - El método `generateQrCode` retorna la imagen PNG en base64 (data URI).

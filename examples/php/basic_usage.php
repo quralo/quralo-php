@@ -29,18 +29,8 @@ $metadata = [
 
 $ecl = Quralo::ecl();
 
-// QR plano
-$dataUriQrPlain = $ecl->generateQrCode($clientId, null, $person, $author, $metadata, array(
-    'format' => 'plain',
-    'ttl_seconds' => 600,
-    'include_logo' => false,
-));
-
-file_put_contents(__DIR__ . '/plain_qr.png', base64_decode(str_replace('data:image/png;base64,', '', $dataUriQrPlain)));
-echo "QR plano generado y guardado como plain_qr.png\n";
-
+// QR seguro (siempre)
 $dataUriQrSecure = $ecl->generateQrCode($clientId, $clientSecret, $person, $author, $metadata, array(
-    'format' => 'secure',
     'ttl_seconds' => 600,
     'include_logo' => false,
 ));
@@ -53,7 +43,8 @@ echo "Ready for production use in healthcare environments.\n";
 
 /**
  * Decodifica un QR seguro en el formato:
- * QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
+ * QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
+ * - ecl: identificador del módulo
  * - client_id: identificador del cliente
  * - timestamp: expiración (UNIX)
  * - data: payload comprimido y cifrado (base64url)
@@ -70,11 +61,11 @@ function base64url_decode_php($data) {
 
 function decode_secure_qr($qrPayload, $clientSecret) {
     $parts = explode('|', $qrPayload);
-    if (count($parts) !== 6 || $parts[0] !== 'QRL' || $parts[1] !== 'v=1') {
+    if (count($parts) !== 7 || $parts[0] !== 'QRL' || $parts[1] !== 'v=1' || $parts[2] !== 'ecl') {
         throw new Exception("Formato de QR inválido");
     }
-    list(, , $clientId, $timestamp, $data_b64url, $mac_b64url) = $parts;
-    $base = implode('|', array_slice($parts, 0, 5)); // QRL|v=1|<client_id>|<timestamp>|<data>
+    list(, , $module, $clientId, $timestamp, $data_b64url, $mac_b64url) = $parts;
+    $base = implode('|', array_slice($parts, 0, 6)); // QRL|v=1|ecl|<client_id>|<timestamp>|<data>
     if (ctype_xdigit($clientSecret) && strlen($clientSecret) === 64) {
         $clientSecret = hex2bin($clientSecret);
     }
@@ -104,7 +95,7 @@ function decode_secure_qr($qrPayload, $clientSecret) {
 
 // Prueba de decodificación del QR seguro generado
 try {
-    $payloadSecure = $ecl->encodePayload($clientId, $clientSecret, $person, $author, $metadata, 'secure', 600);
+    $payloadSecure = $ecl->encodePayload($clientId, $clientSecret, $person, $author, $metadata, 600);
     $resultado = decode_secure_qr($payloadSecure, $clientSecret);
     echo "\nDecodificación del QR seguro:\n";
     print_r($resultado);

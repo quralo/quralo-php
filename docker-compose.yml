@@ -7,7 +7,7 @@
 #
 # Ejemplo de uso:
 #
-#   docker compose run quralo-php php examples/php/basic_usage.php
+#   docker compose run --rm quralo-php php examples/php/basic_usage.php
 #
 # Esto ejecutará el ejemplo de uso básico del SDK dentro del contenedor.
 #

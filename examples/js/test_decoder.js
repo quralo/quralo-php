@@ -14,7 +14,8 @@ function base64urlDecode(input) {
 
 /**
  * Decodifica un QR seguro en el formato:
- * QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
+ * QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
+ * - ecl: identificador del módulo
  * - client_id: identificador del cliente
  * - timestamp: expiración (UNIX)
  * - data: payload comprimido y cifrado (base64url)
@@ -23,11 +24,11 @@ function base64urlDecode(input) {
 function decodeSecureQR(qrString) {
     try {
         const parts = qrString.split('|');
-        if (parts.length !== 6 || parts[0] !== 'QRL' || parts[1] !== 'v=1') {
+        if (parts.length !== 7 || parts[0] !== 'QRL' || parts[1] !== 'v=1' || parts[2] !== 'ecl') {
             throw new Error('Formato de QR inválido');
         }
-        const [ , , clientId, timestamp, data_b64url, mac_b64url ] = parts;
-        const base = parts.slice(0, 5).join('|'); // QRL|v=1|<client_id>|<timestamp>|<data>
+        const [ , , module, clientId, timestamp, data_b64url, mac_b64url ] = parts;
+        const base = parts.slice(0, 6).join('|'); // QRL|v=1|ecl|<client_id>|<timestamp>|<data>
         // Verificar MAC
         const expectedMac = crypto.createHmac('sha256', CLIENT_SECRET).update(base).digest();
         const expectedMac_b64url = expectedMac.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -56,8 +57,8 @@ function decodeSecureQR(qrString) {
 }
 
 // 🧪 Prueba
-// Ejemplo: QRL|v=1|<client_id>|<timestamp>|<data>|<mac>
-const qrString = 'QRL|v=1|c710e909-067a-4b05-8679-5a386cdd5e92|1752845098|QPE-TyBFYmhL3xB6rJrY9cX-gotZ9AlnWk1Ey9OAC_iaj_uQDul_jieECkWTis24iSf4TyjqhOZ_TEc9A6b65YkrFipOQNIetyDO5MwzxyBr3ZqfAKXHvWablHPn6sX5ou6rkekvANqJfXRCI5PTZ1Odg9LlY9Cq8M-_g-FBZ6m_-Czgupkkhed61-Cuo7HSfm-UEE51f5Awg1jJmfh1rQ|UJ95ZHQ3OSEdQskS45mHWEni38Tloli8vcbFz5lrfD0';
+// Ejemplo: QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
+const qrString = 'QRL|v=1|ecl|c710e909-067a-4b05-8679-5a386cdd5e92|1752845098|QPE-TyBFYmhL3xB6rJrY9cX-gotZ9AlnWk1Ey9OAC_iaj_uQDul_jieECkWTis24iSf4TyjqhOZ_TEc9A6b65YkrFipOQNIetyDO5MwzxyBr3ZqfAKXHvWablHPn6sX5ou6rkekvANqJfXRCI5PTZ1Odg9LlY9Cq8M-_g-FBZ6m_-Czgupkkhed61-Cuo7HSfm-UEE51f5Awg1jJmfh1rQ|UJ95ZHQ3OSEdQskS45mHWEni38Tloli8vcbFz5lrfD0';
 const resultado = decodeSecureQR(qrString);
 console.log('Resultado:', resultado);
 
