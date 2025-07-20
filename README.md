@@ -38,8 +38,8 @@ El "contexto externo" es cualquier paquete de datos (por ejemplo, un identificad
 QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
 ```
 - **QRL**: prefijo fijo
-- **v=1**: versión del esquema
-- **ecl**: identificador del módulo (actualmente único)
+- **<version>**: versión del esquema
+- **<module_id>**: identificador del módulo (actualmente "ecl" es el único módulo disponible)
 - **<client_id>**: identificador del cliente (visible, no cifrado)
 - **<timestamp>**: expiración (UNIX epoch, segundos)
 - **<data>**: payload comprimido y cifrado (base64url)

@@ -6,7 +6,7 @@ class Ecl
 {
   /**
    * Genera el payload QR en formato seguro:
-   * QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
+   * QRL|1|ecl|<client_id>|<timestamp>|<data>|<mac>
    * - ecl: identificador del módulo (actualmente único)
    * - client_id: identificador del cliente (visible)
    * - timestamp: expiración (segundos UNIX)
@@ -45,15 +45,15 @@ class Ecl
     }
     $data = $iv . $ciphertext;
     $data_b64url = rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-    // QRL|v=1|ecl|<client_id>|<timestamp>|<data>
-    $base = 'QRL|v=1|' . $module . '|' . $clientId . '|' . $timestamp . '|' . $data_b64url;
+    // QRL|1|ecl|<client_id>|<timestamp>|<data>
+    $base = 'QRL|1|' . $module . '|' . $clientId . '|' . $timestamp . '|' . $data_b64url;
     $mac = hash_hmac('sha256', $base, $clientSecret, true);
     $mac_b64url = rtrim(strtr(base64_encode($mac), '+/', '-_'), '=');
     return $base . '|' . $mac_b64url;
   }
   /**
    * Genera un código QR PNG (data URI) con el payload generado.
-   * El formato del payload es: QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
+   * El formato del payload es: QRL|1|ecl|<client_id>|<timestamp>|<data>|<mac>
    */
   public function generateQrCode($clientId, $clientSecret, $person, $author, $metadata, $options)
   {

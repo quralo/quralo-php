@@ -43,7 +43,7 @@ echo "Ready for production use in healthcare environments.\n";
 
 /**
  * Decodifica un QR seguro en el formato:
- * QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
+ * QRL|1|ecl|<client_id>|<timestamp>|<data>|<mac>
  * - ecl: identificador del módulo
  * - client_id: identificador del cliente
  * - timestamp: expiración (UNIX)
@@ -61,11 +61,11 @@ function base64url_decode_php($data) {
 
 function decode_secure_qr($qrPayload, $clientSecret) {
     $parts = explode('|', $qrPayload);
-    if (count($parts) !== 7 || $parts[0] !== 'QRL' || $parts[1] !== 'v=1' || $parts[2] !== 'ecl') {
+    if (count($parts) !== 7 || $parts[0] !== 'QRL' || $parts[1] !== '1' || $parts[2] !== 'ecl') {
         throw new Exception("Formato de QR inválido");
     }
     list(, , $module, $clientId, $timestamp, $data_b64url, $mac_b64url) = $parts;
-    $base = implode('|', array_slice($parts, 0, 6)); // QRL|v=1|ecl|<client_id>|<timestamp>|<data>
+    $base = implode('|', array_slice($parts, 0, 6)); // QRL|1|ecl|<client_id>|<timestamp>|<data>
     if (ctype_xdigit($clientSecret) && strlen($clientSecret) === 64) {
         $clientSecret = hex2bin($clientSecret);
     }
