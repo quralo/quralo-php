@@ -37,7 +37,7 @@ El "contexto externo" es cualquier paquete de datos (por ejemplo, un identificad
 ```
 QRL|1|ecl|<client_id>|<timestamp>|<data>|<mac>
 ```
-- **QRL**: prefijo fijo
+- **QRL**: prefijo fijo que identifica a un QR de Quralo
 - **`schema_version`**: versión del esquema
 - **`module_id`**: identificador del módulo (actualmente "ecl" es el único módulo disponible)
 - **`client_id`**: identificador del cliente (visible, no cifrado)
