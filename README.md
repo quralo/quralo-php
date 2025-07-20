@@ -35,10 +35,10 @@ El "contexto externo" es cualquier paquete de datos (por ejemplo, un identificad
 ### Formato del QR
 
 ```
-QRL|v=1|ecl|<client_id>|<timestamp>|<data>|<mac>
+QRL|1|ecl|<client_id>|<timestamp>|<data>|<mac>
 ```
 - **QRL**: prefijo fijo
-- **<version>**: versión del esquema
+- **<schema_version>**: versión del esquema
 - **<module_id>**: identificador del módulo (actualmente "ecl" es el único módulo disponible)
 - **<client_id>**: identificador del cliente (visible, no cifrado)
 - **<timestamp>**: expiración (UNIX epoch, segundos)
