@@ -8,18 +8,18 @@ echo "=== Quralo PHP SDK - Healthcare System Integration Tools ===\n";
 echo "=== Integración de Sistemas Hospitalarios con Plataforma Quralo ===\n\n";
 
 $clientId = 'c710e909-067a-4b05-8679-5a386cdd5e92';
-$clientSecret = '6927e247e82536c7623815b2a9580074bfb04aa2b3e8ae2ea2b44a1e78628d53'; // 32 bytes hex
+$clientSecret = '237bdaf0ae85f8fa3a21f8c38dfd7b9f57d44cd79b652b5cc545d31335fa91d6'; // 32 bytes hex
 $person = [
-    'lastname' => 'Smith',
-    'firstname' => 'John',
-    'person_sex' => 'm',
-    'date_of_birth' => '1990-03-15',
+    'lastname' => 'Garzolana',
+    'firstname' => 'Roberto',
+    'person_sex' => 'male',
+    'date_of_birth' => '1990-01-08',
     'person_id_type' => 'national_id',
     'person_id_number' => '12345678'
 ];
 $author = [
     'person_id_type' => 'national_id',
-    'person_id_number' => '87654321'
+    'person_id_number' => '35113456'
 ];
 $metadata = [
     'chapter_id' => "123",
@@ -31,7 +31,7 @@ $ecl = Quralo::ecl();
 
 // QR seguro (siempre)
 $dataUriQrSecure = $ecl->generateQrCode($clientId, $clientSecret, $person, $author, $metadata, array(
-    'ttl_seconds' => 600,
+    'ttl_seconds' => 7200,
     'include_logo' => false,
 ));
 

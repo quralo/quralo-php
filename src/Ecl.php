@@ -16,7 +16,9 @@ class Ecl
   public function encodePayload($clientId, $clientSecret, $person, $author, $metadata, $ttlSeconds = 300)
   {
     $timestamp = time() + $ttlSeconds;
+    $schemaVersion = '1';
     $module = 'ecl';
+    $cryptoVersion = '1A';
     $compactPayload = array(
       'p' => array(
         'ln' => isset($person['lastname']) ? $person['lastname'] : '',
@@ -35,22 +37,31 @@ class Ecl
     if (empty($clientSecret)) {
       throw new \Exception("Falta clientSecret");
     }
-    $clientSecret = $this->normalizeKey($clientSecret);
+
     $json = json_encode($compactPayload);
     $compressed = gzcompress($json);
+    $salt = openssl_random_pseudo_bytes(16);
+    // PBKDF2-SHA256, 100000 iteraciones, 32 bytes
+    $key = hash_pbkdf2('sha256', $clientSecret, $salt, 100000, 32, true);
     $iv = openssl_random_pseudo_bytes(16);
-    $ciphertext = openssl_encrypt($compressed, 'AES-256-CBC', $clientSecret, OPENSSL_RAW_DATA, $iv);
+    $ciphertext = openssl_encrypt($compressed, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
     if ($ciphertext === false) {
       throw new \Exception("Error al cifrar el contenido");
     }
-    $data = $iv . $ciphertext;
-    $data_b64url = rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
-    // QRL|1|ecl|<client_id>|<timestamp>|<data>
-    $base = 'QRL|1|' . $module . '|' . $clientId . '|' . $timestamp . '|' . $data_b64url;
-    $mac = hash_hmac('sha256', $base, $clientSecret, true);
-    $mac_b64url = rtrim(strtr(base64_encode($mac), '+/', '-_'), '=');
-    return $base . '|' . $mac_b64url;
+    // Codificar salt, iv y ciphertext en base64url
+    $salt_b64url = rtrim(strtr(base64_encode($salt), '+/', '-_'), '=');
+    $iv_b64url = rtrim(strtr(base64_encode($iv), '+/', '-_'), '=');
+    $ciphertext_b64url = rtrim(strtr(base64_encode($ciphertext), '+/', '-_'), '=');
+    // Formato salt:iv:ciphertext (base64url)
+    $encryptedData = $salt_b64url . ':' . $iv_b64url . ':' . $ciphertext_b64url;
+    $qrBase = 'QRL|' . $schemaVersion . '|' . $module . '|' . $clientId . '|' . $timestamp . '|' . $cryptoVersion . '|' . $encryptedData;
+    // Usar la clave original para la HMAC externa
+    $normalizedSecret = $this->normalizeKey($clientSecret);
+    $mac_bin = hash_hmac('sha256', $qrBase, $normalizedSecret, true);
+    $mac_b64url = rtrim(strtr(base64_encode($mac_bin), '+/', '-_'), '=');
+    return $qrBase . '|' . $mac_b64url;
   }
+
   /**
    * Genera un código QR PNG (data URI) con el payload generado.
    * El formato del payload es: QRL|1|ecl|<client_id>|<timestamp>|<data>|<mac>
