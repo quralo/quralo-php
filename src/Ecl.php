@@ -20,6 +20,7 @@ class Ecl
     $module = 'ecl';
     $cryptoVersion = '1A';
     $compactPayload = array(
+      't' => 'ehr',
       'p' => array(
         'ln' => isset($person['lastname']) ? $person['lastname'] : '',
         'fn' => isset($person['firstname']) ? $person['firstname'] : '',
@@ -60,6 +61,51 @@ class Ecl
     $mac_bin = hash_hmac('sha256', $qrBase, $normalizedSecret, true);
     $mac_b64url = rtrim(strtr(base64_encode($mac_bin), '+/', '-_'), '=');
     return $qrBase . '|' . $mac_b64url;
+  }
+
+  /**
+   * Decodifica y valida un payload generado por encodePayload.
+   * Retorna el array original si el HMAC y el formato son válidos.
+   */
+  public function decodePayload($payload, $clientSecret)
+  {
+    $parts = explode('|', $payload);
+    if (count($parts) !== 8 || $parts[0] !== 'QRL') {
+      throw new \Exception("Formato de payload inválido");
+    }
+    list($prefix, $schemaVersion, $module, $clientId, $timestamp, $cryptoVersion, $encryptedData, $mac_b64url) = $parts;
+    // Validar HMAC
+    $qrBase = implode('|', array_slice($parts, 0, 7));
+    $normalizedSecret = $this->normalizeKey($clientSecret);
+    $mac_bin = hash_hmac('sha256', $qrBase, $normalizedSecret, true);
+    $expected_mac_b64url = rtrim(strtr(base64_encode($mac_bin), '+/', '-_'), '=');
+    if (!hash_equals($expected_mac_b64url, $mac_b64url)) {
+      throw new \Exception("MAC inválido: el contenido fue alterado o la clave es incorrecta");
+    }
+    // Decodificar salt, iv y ciphertext
+    $encParts = explode(':', $encryptedData);
+    if (count($encParts) !== 3) {
+      throw new \Exception("Formato de datos cifrados inválido");
+    }
+    list($salt_b64url, $iv_b64url, $ciphertext_b64url) = $encParts;
+    $salt = base64_decode(strtr($salt_b64url, '-_', '+/').str_repeat('=', (4 - strlen($salt_b64url) % 4) % 4));
+    $iv = base64_decode(strtr($iv_b64url, '-_', '+/').str_repeat('=', (4 - strlen($iv_b64url) % 4) % 4));
+    $ciphertext = base64_decode(strtr($ciphertext_b64url, '-_', '+/').str_repeat('=', (4 - strlen($ciphertext_b64url) % 4) % 4));
+    // Derivar clave
+    $key = hash_pbkdf2('sha256', $clientSecret, $salt, 100000, 32, true);
+    $compressed = openssl_decrypt($ciphertext, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+    if ($compressed === false) {
+      throw new \Exception("Error al descifrar el contenido");
+    }
+    $json = @gzuncompress($compressed);
+    if ($json === false) {
+      throw new \Exception("Error al descomprimir el contenido");
+    }
+    $data = json_decode($json, true);
+    if (!is_array($data)) {
+      throw new \Exception("Error al decodificar el JSON");
+    }
+    return $data;
   }
 
   /**

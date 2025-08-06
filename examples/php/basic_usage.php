@@ -8,7 +8,7 @@ echo "=== Quralo PHP SDK - Healthcare System Integration Tools ===\n";
 echo "=== Integración de Sistemas Hospitalarios con Plataforma Quralo ===\n\n";
 
 $clientId = 'c710e909-067a-4b05-8679-5a386cdd5e92';
-$clientSecret = '237bdaf0ae85f8fa3a21f8c38dfd7b9f57d44cd79b652b5cc545d31335fa91d6'; // 32 bytes hex
+$clientSecret = '7a04d80b5df7ed36701a66d0d7e23ade304bf24d49d4dc8064b77fbd25ec277a'; // 32 bytes hex
 $person = [
     'lastname' => 'Garzolana',
     'firstname' => 'Roberto',
@@ -59,46 +59,12 @@ function base64url_decode_php($data) {
     return base64_decode(strtr($data, '-_', '+/'));
 }
 
-function decode_secure_qr($qrPayload, $clientSecret) {
-    $parts = explode('|', $qrPayload);
-    if (count($parts) !== 7 || $parts[0] !== 'QRL' || $parts[1] !== '1' || $parts[2] !== 'ecl') {
-        throw new Exception("Formato de QR inválido");
-    }
-    list(, , $module, $clientId, $timestamp, $data_b64url, $mac_b64url) = $parts;
-    $base = implode('|', array_slice($parts, 0, 6)); // QRL|1|ecl|<client_id>|<timestamp>|<data>
-    if (ctype_xdigit($clientSecret) && strlen($clientSecret) === 64) {
-        $clientSecret = hex2bin($clientSecret);
-    }
-    $expectedMac = hash_hmac('sha256', $base, $clientSecret, true);
-    $expectedMac_b64url = rtrim(strtr(base64_encode($expectedMac), '+/', '-_'), '=');
-    if (!hash_equals($expectedMac_b64url, $mac_b64url)) {
-        throw new Exception("MAC inválido");
-    }
-    $bin = base64url_decode_php($data_b64url);
-    $iv = substr($bin, 0, 16);
-    $ciphertext = substr($bin, 16);
-    $compressed = openssl_decrypt($ciphertext, 'AES-256-CBC', $clientSecret, OPENSSL_RAW_DATA, $iv);
-    if ($compressed === false) {
-        throw new Exception("Error al descifrar el QR");
-    }
-    $json = @gzuncompress($compressed);
-    if ($json === false) {
-        throw new Exception("Error al descomprimir los datos");
-    }
-    $parsed = json_decode($json, true);
-    $now = time();
-    if ($now > intval($timestamp)) {
-        throw new Exception("El QR ha expirado.");
-    }
-    return $parsed;
-}
-
 // Prueba de decodificación del QR seguro generado
 try {
     $payloadSecure = $ecl->encodePayload($clientId, $clientSecret, $person, $author, $metadata, 600);
-    $resultado = decode_secure_qr($payloadSecure, $clientSecret);
+    $payloadDecoded = $ecl->decodePayload($payloadSecure, $clientSecret);
     echo "\nDecodificación del QR seguro:\n";
-    print_r($resultado);
+    print_r($payloadDecoded);
 } catch (Exception $e) {
     echo "\nError al decodificar el QR seguro: " . $e->getMessage() . "\n";
 }
