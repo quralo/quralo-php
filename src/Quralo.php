@@ -18,10 +18,12 @@ namespace Quralo;
 *   $person = [
 *     'lastname' => 'Pérez',
 *     'firstname' => 'Ana',
-*     'person_sex' => 'F',
+*     'person_sex' => 'female',
 *     'date_of_birth' => '1990-01-01',
 *     'person_id_type' => 'DNI',
 *     'person_id_number' => '12345678',
+*     'email' => 'ana@perez.com',
+*     'phone_number' => '+34123456789',
 *   ];
 *   $author = [
 *     'person_id_type' => 'DNI',

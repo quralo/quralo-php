@@ -28,6 +28,8 @@ class Ecl
         'db' => isset($person['date_of_birth']) ? $person['date_of_birth'] : '',
         'it' => isset($person['person_id_type']) ? $person['person_id_type'] : '',
         'in' => isset($person['person_id_number']) ? $person['person_id_number'] : '',
+        'em' => isset($person['email']) ? $person['email'] : '',
+        'pn' => isset($person['phone_number']) ? $person['phone_number'] : '',
       ),
       'a' => array(
         'it' => isset($author['person_id_type']) ? $author['person_id_type'] : '',
