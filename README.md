@@ -106,3 +106,66 @@ Si el HMAC o el formato no son válidos, lanza una excepción.
 - No se usa JWT/JWS/JWE ni claves públicas/privadas asimétricas.
 - El método `generateQrCode` retorna la imagen PNG en base64 (data URI).
 - Se puede incluir un logo en el QR con la opción `include_logo` (requiere GD y logo-qr.png).
+
+## Mantenimiento y Publicación
+
+Si actúas como mantenedor de esta SDK y necesitas generar una **versión compilada** (un solo archivo PHP, un archivo Phar, o una distribución personalizada que incluya la carpeta `vendor`), ten en cuenta lo siguiente:
+
+### Solución a conflictos de constantes (`PHPQRCode`)
+
+La librería `aferrandini/phpqrcode` define constantes globales (como `QR_CACHEABLE`) sin verificar si ya existen. Esto puede causar errores de tipo `Notice: Constant already defined` en entornos de clientes que ya tengan cargada otra versión de la misma librería.
+
+Para evitar esto, se han implementado dos medidas:
+
+1.  **Supresión en ejecución:** El código en `src/Ecl.php` utiliza `@require_once` para silenciar cualquier aviso durante la carga de la dependencia.
+2.  **Parche automático en `vendor`:** El archivo `composer.json` incluye scripts que parchean automáticamente la librería externa después de cada `install` o `update`.
+
+### Pasos antes de publicar / compilar
+
+Cada vez que vayas a generar una nueva versión de la librería para distribuir a los clientes, asegúrate de seguir estos pasos:
+
+1.  Actualiza o reinstala las dependencias para asegurar que el parche se aplique:
+    ```bash
+    composer install
+    ```
+    *(Esto ejecutará automáticamente el script `post-install-cmd` que envuelve las constantes en bloques `if (!defined(...))`)*.
+
+2.  Si prefieres no reinstalar pero quieres asegurarte de que el parche está aplicado en tu carpeta `vendor` local:
+    ```bash
+    composer run-script post-install-cmd
+    ```
+
+3.  Procede con tu proceso habitual de compilación (Phar, concatenación de archivos, etc.). Los archivos resultantes ya contendrán las protecciones necesarias y serán seguros para cualquier entorno de cliente.
+
+## Desarrollo con Docker
+
+La SDK incluye un archivo `docker-compose.yml` para facilitar el desarrollo y las pruebas en un entorno controlado con **PHP 5.6**.
+
+### Instalación de dependencias (Composer)
+
+No necesitas tener PHP o Composer instalado localmente. Puedes usar el contenedor para instalar las dependencias:
+
+```bash
+docker compose run --rm quralo-php composer install
+```
+
+### Ejecutar ejemplo de uso básico
+
+Para correr el script de ejemplo incluido en la SDK:
+
+```bash
+docker compose run --rm quralo-php
+```
+*(Esto ejecutará `examples/php/basic_usage.php` por defecto)*.
+
+### Otras tareas de desarrollo
+
+- **Abrir una terminal interactiva:**
+  ```bash
+  docker compose run --rm -it quralo-php bash
+  ```
+- **Ejecutar tests:**
+  ```bash
+  docker compose run --rm quralo-php ./vendor/bin/phpunit
+  ```
+

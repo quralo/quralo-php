@@ -25,4 +25,4 @@ services:
     volumes:
       - ./:/app
     working_dir: /app
-    command: php examples/basic_usage.php
+    command: php examples/php/basic_usage.php

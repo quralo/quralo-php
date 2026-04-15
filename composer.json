@@ -2,7 +2,16 @@
     "name": "quralo/quralo-php",
     "description": "Quralo PHP SDK - Healthcare system integration tools for seamless interoperability with Quralo platform",
     "type": "library",
-    "keywords": ["quralo", "healthcare", "hospital", "integration", "interoperability", "sdk", "qr-code", "medical"],
+    "keywords": [
+        "quralo",
+        "healthcare",
+        "hospital",
+        "integration",
+        "interoperability",
+        "sdk",
+        "qr-code",
+        "medical"
+    ],
     "license": "MIT",
     "authors": [
         {
@@ -32,7 +41,13 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "post-install-cmd": [
+            "sed -i \"s/define('\\([^']\\+\\)',/if (\\!defined('\\1')) define('\\1',/g\" vendor/aferrandini/phpqrcode/lib/PHPQRCode.php"
+        ],
+        "post-update-cmd": [
+            "sed -i \"s/define('\\([^']\\+\\)',/if (\\!defined('\\1')) define('\\1',/g\" vendor/aferrandini/phpqrcode/lib/PHPQRCode.php"
+        ]
     },
     "config": {
         "sort-packages": true

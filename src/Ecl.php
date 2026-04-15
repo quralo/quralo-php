@@ -122,7 +122,8 @@ class Ecl
     $errorCorrection = isset($options['error_correction']) ? strtoupper($options['error_correction']) : 'M';
     $includeLogo = isset($options['include_logo']) ? $options['include_logo'] : false;
     $payload = $this->encodePayload($clientId, $clientSecret, $person, $author, $metadata, $ttlSeconds);
-    require_once __DIR__ . '/../vendor/aferrandini/phpqrcode/lib/PHPQRCode.php';
+    // Suppress notices because PHPQRCode defines global constants without checking if they already exist
+    @require_once __DIR__ . '/../vendor/aferrandini/phpqrcode/lib/PHPQRCode.php';
     $levels = array(
       'L' => \PHPQRCode\Constants::QR_ECLEVEL_L,
       'M' => \PHPQRCode\Constants::QR_ECLEVEL_M,
