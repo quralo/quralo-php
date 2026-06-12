@@ -28,12 +28,14 @@ class Ecl
         'db' => isset($person['date_of_birth']) ? $person['date_of_birth'] : '',
         'it' => isset($person['person_id_type']) ? $person['person_id_type'] : '',
         'in' => isset($person['person_id_number']) ? $person['person_id_number'] : '',
+        'ic' => isset($person['person_id_country']) ? $person['person_id_country'] : 'AR', // Argentina by default
         'em' => isset($person['email']) ? $person['email'] : '',
         'pn' => isset($person['phone_number']) ? $person['phone_number'] : '',
       ),
       'a' => array(
         'it' => isset($author['person_id_type']) ? $author['person_id_type'] : '',
         'in' => isset($author['person_id_number']) ? $author['person_id_number'] : '',
+        'ic' => isset($author['person_id_country']) ? $author['person_id_country'] : 'AR', // Argentina by default
       ),
       'm' => $metadata
     );
