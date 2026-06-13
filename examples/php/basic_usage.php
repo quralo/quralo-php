@@ -15,13 +15,15 @@ $person = [
     'person_sex' => 'male',
     'date_of_birth' => '1990-01-08',
     'person_id_type' => 'national_id',
-    'person_id_number' => '12345678',
-    'email' => 'roberto@garzolana.com',
+    'person_id_number' => '35113456',
+    'person_id_country' => 'AR',
+    'email' => 'frossi+01@quralo.com',
     'phone_number' => '+34123456789',
 ];
 $author = [
     'person_id_type' => 'national_id',
-    'person_id_number' => '35113456'
+    'person_id_number' => '35113456',
+    'person_id_country' => 'AR',
 ];
 $metadata = [
     'chapter_id' => "123",
